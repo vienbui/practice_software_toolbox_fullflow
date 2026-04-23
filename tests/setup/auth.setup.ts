@@ -29,6 +29,7 @@ test.describe('Setup - Register user', () => {
       JSON.stringify({
         email: UserRegisterPayload.email,
         password: UserRegisterPayload.password,
+        id: registerResponseBody.id,
       }),
     );
   });

@@ -20,3 +20,8 @@ export const userLoginPayload = {
   email: `test-1776918945735@example.com`,
   password: `SuperSecure@123`,
 };
+
+export const adminLoginPayload = {
+    email: process.env.ADMIN_EMAIL || 'admin@practicesoftwaretesting.com',
+    password: process.env.ADMIN_PASSWORD || 'welcome01',
+  };

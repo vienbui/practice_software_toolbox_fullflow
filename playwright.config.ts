@@ -39,8 +39,12 @@ export default defineConfig({
       testMatch: `**/setup/auth.setup.ts`,
     },
     {
+      name: 'admin-setup',     // Login admin → lưu admin-token.json
+      testMatch: '**/setup/admin.auth.setup.ts',
+    },
+    {
       name: 'api',
-      dependencies: ['setup'],
+      dependencies: ['setup', 'admin-setup'],
       testMatch: `**/api/*.spec.ts`,
     },
     {
