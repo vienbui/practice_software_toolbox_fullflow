@@ -10,6 +10,8 @@ test.describe('User API flow', () => {
   let admin_token: string;
 
   test.beforeAll(async () => {
+
+    // User token
     access_token = JSON.parse(
       fs.readFileSync(path.resolve(__dirname, '../../.auth/token.json'), 'utf8'),
     ).access_token;
@@ -21,6 +23,24 @@ test.describe('User API flow', () => {
 
     })
 
+
+    // Get all users
+    test('Get all users', async ({request}) => {
+
+      const getAllUsersResponse = await request.get(`${process.env.API_URL}/${userRoutes.getUser}`,{
+        headers: { Authorization: `Bearer ${admin_token}` },
+      } )
+
+      const getAllUsersResponseBody = await getAllUsersResponse.json();
+      console.log(getAllUsersResponseBody);
+      console.log(getAllUsersResponse.status());
+      expect(getAllUsersResponse.status()).toBe(200);
+
+    })
+
+
+
+    // Get a specific User
     test(' Get a specific User', async ({ request }) => {
       const getUserResponse = await request.get(`${process.env.API_URL}/${userRoutes.getUser}`, {
         headers: { Authorization: `Bearer ${access_token}` },
@@ -31,6 +51,7 @@ test.describe('User API flow', () => {
       console.log(getUserResponse.status());
       expect(getUserResponse.status()).toBe(200);
     });
+
 
 
     // Delete a User
