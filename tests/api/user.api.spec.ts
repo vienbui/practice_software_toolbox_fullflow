@@ -369,4 +369,226 @@ test.describe('User API flow', () => {
       expect(response.status(), 'Delete user should return 204').toBe(204);
     });
   });
+
+  // Logout
+  test.describe.serial('Logout', () => {
+    let logoutToken: string;
+    let logoutUserId: string;
+    const logoutEmail = `logout-${Date.now()}@example.com`;
+    const logoutPassword = 'SuperSecure@123';
+
+    test('Setup: register and login logout user', async ({ request }) => {
+      const regResponse = await request.post(`${process.env.API_URL}/${userRoutes.registry}`, {
+        data: {
+          first_name: 'Logout',
+          last_name: 'User',
+          email: logoutEmail,
+          password: logoutPassword,
+          phone: '0987654321',
+          dob: '1990-01-01',
+          address: { street: 'Street 1', city: 'City', state: 'State', country: 'Country', postal_code: '1234AA' },
+        },
+      });
+      expect(regResponse.status(), 'Setup register should return 201').toBe(201);
+      logoutUserId = (await regResponse.json()).id;
+
+      const loginResponse = await request.post(`${process.env.API_URL}/${userRoutes.login}`, {
+        data: { email: logoutEmail, password: logoutPassword },
+      });
+      expect(loginResponse.status(), 'Setup login should return 200').toBe(200);
+      logoutToken = (await loginResponse.json()).access_token;
+    });
+
+    test('@USER-T004a Logout with valid token returns 200 and success message', async ({ request }) => {
+      const response = await request.get(`${process.env.API_URL}/${userRoutes.logout}`, {
+        headers: { Authorization: `Bearer ${logoutToken}` },
+      });
+
+      expect(response.status(), 'Logout with valid token should return 200').toBe(200);
+      const body = await response.json();
+      expect(body.message, 'Response body should confirm logout').toBe('Successfully logged out');
+    });
+
+    test('@USER-T004b Token is invalidated after logout', async ({ request }) => {
+      const response = await request.get(`${process.env.API_URL}/${userRoutes.getMe}`, {
+        headers: { Authorization: `Bearer ${logoutToken}` },
+      });
+
+      expect(response.status(), 'Invalidated token should return 401 on subsequent request').toBe(401);
+    });
+
+    test('@USER-T004c Logout without token returns 401', async ({ request }) => {
+      const response = await request.get(`${process.env.API_URL}/${userRoutes.logout}`);
+
+      expect(response.status(), 'Logout without token should return 401').toBe(401);
+      const body = await response.json();
+      expect(body.message, 'Response body should contain Unauthorized message').toBe('Unauthorized');
+    });
+
+    test('@USER-T004d Logout with invalid token returns 401', async ({ request }) => {
+      const response = await request.get(`${process.env.API_URL}/${userRoutes.logout}`, {
+        headers: { Authorization: 'Bearer invalid.token.value' },
+      });
+
+      expect(response.status(), 'Invalid token should return 401').toBe(401);
+      const body = await response.json();
+      expect(body.message, 'Response body should contain Unauthorized message').toBe('Unauthorized');
+    });
+
+    test('Teardown: delete logout user', async ({ request }) => {
+      const response = await request.delete(
+        `${process.env.API_URL}/${userRoutes.userById(logoutUserId)}`,
+        { headers: { Authorization: `Bearer ${admin_token}` } },
+      );
+      expect(response.status(), 'Teardown delete should return 204').toBe(204);
+    });
+  });
+
+  // Refresh token
+  test.describe.serial('Refresh token', () => {
+    let refreshToken: string;
+    let refreshUserId: string;
+    const refreshEmail = `refresh-${Date.now()}@example.com`;
+    const refreshPassword = 'SuperSecure@123';
+
+    test('Setup: register and login refresh user', async ({ request }) => {
+      const regResponse = await request.post(`${process.env.API_URL}/${userRoutes.registry}`, {
+        data: {
+          first_name: 'Refresh',
+          last_name: 'User',
+          email: refreshEmail,
+          password: refreshPassword,
+          phone: '0987654321',
+          dob: '1990-01-01',
+          address: { street: 'Street 1', city: 'City', state: 'State', country: 'Country', postal_code: '1234AA' },
+        },
+      });
+      expect(regResponse.status(), 'Setup register should return 201').toBe(201);
+      refreshUserId = (await regResponse.json()).id;
+
+      const loginResponse = await request.post(`${process.env.API_URL}/${userRoutes.login}`, {
+        data: { email: refreshEmail, password: refreshPassword },
+      });
+      expect(loginResponse.status(), 'Setup login should return 200').toBe(200);
+      refreshToken = (await loginResponse.json()).access_token;
+    });
+
+    test('@USER-T005a Refresh with valid token returns 200 and token payload', async ({ request }) => {
+      const response = await request.get(`${process.env.API_URL}/${userRoutes.refresh}`, {
+        headers: { Authorization: `Bearer ${refreshToken}` },
+      });
+
+      expect(response.status(), 'Refresh with valid token should return 200').toBe(200);
+      const body = await response.json();
+      expect(body.access_token, 'Response should contain a new access_token').toBeTruthy();
+      expect(body.token_type, 'token_type should be Bearer').toBe('Bearer');
+      expect(typeof body.expires_in, 'expires_in should be a number').toBe('number');
+      expect(body.expires_in, 'expires_in should be greater than 0').toBeGreaterThan(0);
+    });
+
+    test('@USER-T005b Refresh without token returns 401', async ({ request }) => {
+      const response = await request.get(`${process.env.API_URL}/${userRoutes.refresh}`);
+
+      expect(response.status(), 'Refresh without token should return 401').toBe(401);
+      const body = await response.json();
+      expect(body.message, 'Response body should contain Unauthorized message').toBe('Unauthorized');
+    });
+
+    test('@USER-T005c Refresh with invalid token returns 401', async ({ request }) => {
+      const response = await request.get(`${process.env.API_URL}/${userRoutes.refresh}`, {
+        headers: { Authorization: 'Bearer invalid.token.value' },
+      });
+
+      expect(response.status(), 'Invalid token should return 401').toBe(401);
+      const body = await response.json();
+      expect(body.message, 'Response body should contain Unauthorized message').toBe('Unauthorized');
+    });
+
+    test('Teardown: delete refresh user', async ({ request }) => {
+      const response = await request.delete(
+        `${process.env.API_URL}/${userRoutes.userById(refreshUserId)}`,
+        { headers: { Authorization: `Bearer ${admin_token}` } },
+      );
+      expect(response.status(), 'Teardown delete should return 204').toBe(204);
+    });
+  });
+
+  // Get user by ID
+  test.describe('Get user by ID', () => {
+    let adminUserId: string;
+
+    test.beforeAll(async ({ request }) => {
+      const response = await request.get(`${process.env.API_URL}/${userRoutes.getMe}`, {
+        headers: { Authorization: `Bearer ${admin_token}` },
+      });
+      adminUserId = (await response.json()).id;
+    });
+
+    test('@USER-T006a Get existing user by ID returns 200 with full user schema', async ({ request }) => {
+      const response = await request.get(
+        `${process.env.API_URL}/${userRoutes.userById(adminUserId)}`,
+        { headers: { Authorization: `Bearer ${admin_token}` } },
+      );
+
+      expect(response.status(), 'Get user by valid ID should return 200').toBe(200);
+      const body = await response.json();
+      expect(body.id, 'Returned user id should match requested id').toBe(adminUserId);
+      expect(typeof body.first_name, 'first_name should be a string').toBe('string');
+      expect(typeof body.last_name, 'last_name should be a string').toBe('string');
+      expect(typeof body.email, 'email should be a string').toBe('string');
+      expect(typeof body.enabled, 'enabled should be a boolean').toBe('boolean');
+      expect(typeof body.totp_enabled, 'totp_enabled should be a boolean').toBe('boolean');
+      expect(typeof body.failed_login_attempts, 'failed_login_attempts should be a number').toBe('number');
+      expect(body.address, 'address object should be present').toBeTruthy();
+      expect(typeof body.address.street, 'address.street should be a string').toBe('string');
+      expect(typeof body.address.city, 'address.city should be a string').toBe('string');
+      expect(typeof body.address.country, 'address.country should be a string').toBe('string');
+      expect(body.created_at, 'created_at should be present').toBeTruthy();
+    });
+
+    test('@USER-T006b Non-existent user ID returns 404 with error message', async ({ request }) => {
+      const response = await request.get(
+        `${process.env.API_URL}/${userRoutes.userById('00000000-0000-0000-0000-000000000000')}`,
+        { headers: { Authorization: `Bearer ${admin_token}` } },
+      );
+
+      expect(response.status(), 'Non-existent user ID should return 404').toBe(404);
+      const body = await response.json();
+      expect(body.message, 'Response body should contain not-found message').toBe('Requested item not found');
+    });
+
+    test('@USER-T006c No auth token returns 401', async ({ request }) => {
+      const response = await request.get(
+        `${process.env.API_URL}/${userRoutes.userById(adminUserId)}`,
+      );
+
+      expect(response.status(), 'Missing auth token should return 401').toBe(401);
+      const body = await response.json();
+      expect(body.message, 'Response body should contain Unauthorized message').toBe('Unauthorized');
+    });
+
+    test('@USER-T006d Invalid token returns 401', async ({ request }) => {
+      const response = await request.get(
+        `${process.env.API_URL}/${userRoutes.userById(adminUserId)}`,
+        { headers: { Authorization: 'Bearer invalid.token.value' } },
+      );
+
+      expect(response.status(), 'Invalid token should return 401').toBe(401);
+      const body = await response.json();
+      expect(body.message, 'Response body should contain Unauthorized message').toBe('Unauthorized');
+    });
+
+    test('@USER-T006e Wrong HTTP method returns 405', async ({ request }) => {
+      const response = await request.post(
+        `${process.env.API_URL}/${userRoutes.userById(adminUserId)}`,
+        { headers: { Authorization: `Bearer ${admin_token}` } },
+      );
+
+      expect(response.status(), 'POST on a GET-only route should return 405').toBe(405);
+      const body = await response.json();
+      expect(body.message, 'Response body should contain method-not-allowed message').toBe(
+        'Method is not allowed for the requested route',
+      );
+    });
+  });
 });
