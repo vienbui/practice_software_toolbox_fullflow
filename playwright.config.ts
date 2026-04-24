@@ -35,21 +35,21 @@ export default defineConfig({
   /* Configure projects for major browsers */
   projects: [
     {
-      name: 'setup',
-      testMatch: `**/setup/auth.setup.ts`,
+      name: 'user-setup',
+      testMatch: '**/setup/user.auth.setup.ts',
     },
     {
-      name: 'admin-setup',     // Login admin → lưu admin-token.json
+      name: 'admin-setup',
       testMatch: '**/setup/admin.auth.setup.ts',
     },
     {
       name: 'api',
-      dependencies: ['setup', 'admin-setup'],
+      dependencies: ['user-setup', 'admin-setup'],
       testMatch: `**/api/*.spec.ts`,
     },
     {
       name: 'chromium',
-      dependencies: ['setup'],
+      dependencies: ['user-setup'],
       testMatch: `**/ui/*.spec.ts`,
       use: { ...devices['Desktop Chrome'] },
     },
